@@ -109,7 +109,7 @@ class StockMarket:
         plt.title('LCS Stock Market Values')
         plt.xlabel('Game')
         plt.ylabel('Value')
-        plt.legend()
+        plt.legend(loc='upper left', ncol=2)
         plt.savefig('stock_market_line_graph.png')
         plt.clf()
         if debug:
