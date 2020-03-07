@@ -133,6 +133,7 @@ class StockMarketBotCommands:
         self.status_message = False
         self.total_worth = None
         self.team_stocks = None
+        self.image_description = ''
         self.command_options = {
             'teams': self.process_individual_team_graphs,
             'team': self.process_individual_team_graphs,
@@ -249,7 +250,9 @@ class StockMarketBotCommands:
         Set the status message as the player's overall worth
         """
         self.get_player_worth(self.user_stock_market_credits)
-        self.status_message = f'{self.social_credit_bot.user}\'s total worth is: {self.total_worth}{self.team_stocks}'
+        self.image_description = f'{self.social_credit_bot.display_name}\'s total worth table:'
+        CreateImage(['Team', 'Price', 'Amount', 'Total Value'], self.team_stocks, 'stock_market_player_status.png')
+        print()
 
     def get_player_worth(self, player_stock_market: dict):
         """
@@ -258,15 +261,16 @@ class StockMarketBotCommands:
         :param player_stock_market: Stock market dictionary for a player
         """
         self.total_worth = player_stock_market['money']
-        self.team_stocks = f'\nBank: {player_stock_market["money"]}'
+        self.team_stocks = [['Bank', '---', '-', player_stock_market['money']]]
         for team in player_stock_market:
             if team == 'money':
                 continue
-            team_worth = self.stock_market.stock_market_values[team][-1] * player_stock_market[team]
-            if team_worth > 0:
+            if player_stock_market[team] > 0:
+                team_worth = self.stock_market.stock_market_values[team][-1] * player_stock_market[team]
                 self.total_worth += team_worth
-                self.team_stocks += f'\n\t{team}:\t{player_stock_market[team]} * ' \
-                                    f'{self.stock_market.stock_market_values[team][-1]}'
+                self.team_stocks.append([team, self.stock_market.stock_market_values[team][-1],
+                                         player_stock_market[team], team_worth])
+        self.team_stocks.append(['Total:', '---', '-', self.total_worth])
 
     def help_message(self):
         """

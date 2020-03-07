@@ -318,20 +318,24 @@ class DiscordBot:
         self.stock_market_bot_commands.setup()
         self.stock_market_bot_commands.parse_discord_message()
 
-        images = ['stock_market_line_graph.png', 'stock_market_leaderboard.png']
+        # Post any given status messages
+        if self.stock_market_bot_commands.status_message:
+            await self.message.channel.send(self.stock_market_bot_commands.status_message)
+
+        # Post and remove any created images
+        images = ['stock_market_line_graph.png', 'stock_market_leaderboard.png', 'stock_market_player_status.png']
         for image_file in images:
             if os.path.isfile(image_file):
-                await self.message.channel.send(file=File(image_file, filename=image_file))
+                await self.message.channel.send(self.stock_market_bot_commands.image_description,
+                                                file=File(image_file, filename=image_file))
                 os.remove(image_file)
 
+        # Post if any teams were not found
         not_found = ''
         for team in self.stock_market_bot_commands.stock_market.not_found_teams:
             not_found += f'{team}, '
         if not_found != '':
             await self.message.channel.send(f'Could not find the teams: {not_found[:-2]}')
-
-        if self.stock_market_bot_commands.status_message:
-            await self.message.channel.send(self.stock_market_bot_commands.status_message)
 
     @staticmethod
     async def message_user(user, message):
@@ -373,6 +377,8 @@ class DiscordBot:
                 await valid_commands[message.content.split()[0][1:]]()
 
         # Run the bot
+        if os.name == 'nt':
+            print('Ready')
         self.bot.run(os.getenv('DISCORD_TOKEN'))
 
 
