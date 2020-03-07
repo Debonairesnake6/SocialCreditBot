@@ -252,7 +252,6 @@ class StockMarketBotCommands:
         self.get_player_worth(self.user_stock_market_credits)
         self.image_description = f'{self.social_credit_bot.display_name}\'s total worth table:'
         CreateImage(['Team', 'Price', 'Amount', 'Total Value'], self.team_stocks, 'stock_market_player_status.png')
-        print()
 
     def get_player_worth(self, player_stock_market: dict):
         """

@@ -83,7 +83,7 @@ class DiscordBot:
         if amount >= 0:
 
             # Processes for the author of the message if no mentions were included
-            if len(self.message.message.mentions) == 0 and len(self.message.message.role_mentions) == 0:
+            if len(self.message.mentions) == 0 and len(self.message.role_mentions) == 0:
                 self.credits[self.user]['credits'] += amount
                 self.save_credits()
                 self.post_credits = True
@@ -92,7 +92,7 @@ class DiscordBot:
             else:
 
                 # Process each mention
-                for member in self.message.message.mentions:
+                for member in self.message.mentions:
                     self.credits[member.name]['credits'] += amount
                     self.save_credits()
                     self.post_credits = False
@@ -100,7 +100,7 @@ class DiscordBot:
                                                     f'{self.credits[member.name]["credits"]} social credits')
 
                 # Process each role mention
-                for role in self.message.message.role_mentions:
+                for role in self.message.role_mentions:
                     for member in role.members:
                         self.credits[member.name]['credits'] += amount
                         self.save_credits()
@@ -123,7 +123,7 @@ class DiscordBot:
         if amount >= 0:
 
             # Processes for the author of the message if no mentions were included
-            if len(self.message.message.mentions) == 0 and len(self.message.message.role_mentions) == 0:
+            if len(self.message.mentions) == 0 and len(self.message.role_mentions) == 0:
                 self.credits[self.user]['credits'] -= amount
                 self.save_credits()
                 self.post_credits = True
@@ -132,7 +132,7 @@ class DiscordBot:
             else:
 
                 # Process each mention
-                for member in self.message.message.mentions:
+                for member in self.message.mentions:
                     self.credits[member.name]['credits'] -= amount
                     self.save_credits()
                     self.post_credits = False
@@ -140,7 +140,7 @@ class DiscordBot:
                                                     f'{self.credits[member.name]["credits"]} social credits')
 
                 # Process each role mention
-                for role in self.message.message.role_mentions:
+                for role in self.message.role_mentions:
                     for member in role.members:
                         self.credits[member.name]['credits'] -= amount
                         self.save_credits()
@@ -160,7 +160,7 @@ class DiscordBot:
         """
 
         # Processes for the author of the message if no mentions were included
-        if len(self.message.message.mentions) == 0 and len(self.message.message.role_mentions) == 0:
+        if len(self.message.mentions) == 0 and len(self.message.role_mentions) == 0:
             self.credits[self.user]['credits'] = amount
             self.save_credits()
             self.post_credits = True
@@ -169,7 +169,7 @@ class DiscordBot:
         else:
 
             # Process each mention
-            for member in self.message.message.mentions:
+            for member in self.message.mentions:
                 self.credits[member.name]['credits'] = amount
                 self.save_credits()
                 self.post_credits = False
@@ -177,7 +177,7 @@ class DiscordBot:
                                                 f'{self.credits[member.name]["credits"]} social credits')
 
             # Process each role mention
-            for role in self.message.message.role_mentions:
+            for role in self.message.role_mentions:
                 for member in role.members:
                     self.credits[member.name]['credits'] = amount
                     self.save_credits()
