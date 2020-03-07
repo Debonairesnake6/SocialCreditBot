@@ -9,6 +9,7 @@ import sys
 import matplotlib.pyplot as plt
 
 from dotenv import load_dotenv
+from text_to_image import CreateImage
 
 load_dotenv()
 
@@ -95,9 +96,6 @@ class StockMarket:
         x = [day_cnt for day_cnt in range(len(self.stock_market_values[team]))]
         y = self.stock_market_values[team]
         plt.plot(x, y, label=team)
-        # print(f'Team:\t{team}\n'
-        #       f'\t\tx = {x}\n'
-        #       f'\t\ty = {y}\n\n')
 
     def display_stock_market_graph(self, debug=False):
         """
@@ -122,7 +120,7 @@ class StockMarketBotCommands:
     """
     # Todo
     #   -   Create table showing gains/losses in green/red
-    #   -   Create help message
+    #   -   Better status message
     def __init__(self, social_credit_bot: object):
         self.social_credit_bot = social_credit_bot
         self.message = social_credit_bot.message
@@ -133,6 +131,8 @@ class StockMarketBotCommands:
         self.team = None
         self.amount = None
         self.status_message = False
+        self.total_worth = None
+        self.team_stocks = None
         self.command_options = {
             'teams': self.process_individual_team_graphs,
             'team': self.process_individual_team_graphs,
@@ -142,7 +142,8 @@ class StockMarketBotCommands:
             'purchase': self.buy_or_sell_stock,
             'sell': self.buy_or_sell_stock,
             'status': self.player_status,
-            'help': self.help_message
+            'help': self.help_message,
+            'leaderboard': self.leader_board
         }
 
     def setup(self):
@@ -166,7 +167,7 @@ class StockMarketBotCommands:
             if self.command_options.get(self.command, False):
                 self.command_options[self.command]()
             else:
-                self.message.channel.send(f'Unknown command: {self.command}')
+                self.status_message = f'Unknown command: {self.command}'
         else:
             self.command = self.message.content
             self.process_league_graph()
@@ -217,9 +218,15 @@ class StockMarketBotCommands:
             self.user_stock_market_credits[self.team] += self.amount
             self.status_message = f'Successfully purchased {self.amount} stocks of {self.team}.'
         else:
-            self.status_message = f'Not enough money to buy the requested stocks. \n{self.amount} {self.team} stocks ' \
-                                  f'are worth {stock_requested_value} but you only have ' \
-                                  f'{self.user_stock_market_credits["money"]}.'
+            max_can_buy = int(self.user_stock_market_credits["money"] /
+                              self.stock_market.stock_market_values[self.team][-1])
+            left = self.user_stock_market_credits["money"] % self.stock_market.stock_market_values[self.team][-1]
+            cost = self.user_stock_market_credits["money"] - left
+            self.status_message = f'Not enough money to buy the requested stocks. \n' \
+                                  f'{self.amount} {self.team} stocks are worth {stock_requested_value} but you only ' \
+                                  f'have {self.user_stock_market_credits["money"]}.\n' \
+                                  f'You can buy a maximum of {max_can_buy} {self.team} stock(s) for {cost} which ' \
+                                  f'would leave you with {left}.'
 
     def sell_stocks(self):
         """
@@ -236,19 +243,27 @@ class StockMarketBotCommands:
 
     def player_status(self):
         """
-        Get the player's overall worth
+        Set the status message as the player's overall worth
         """
-        total_worth = self.user_stock_market_credits['money']
-        team_stocks = f'\nBank: {self.user_stock_market_credits["money"]}'
-        for team in self.user_stock_market_credits:
+        self.get_player_worth(self.user_stock_market_credits)
+        self.status_message = f'{self.social_credit_bot.user}\'s total worth is: {self.total_worth}{self.team_stocks}'
+
+    def get_player_worth(self, player_stock_market: dict):
+        """
+        Get the player's overall worth
+
+        :param player_stock_market: Stock market dictionary for a player
+        """
+        self.total_worth = player_stock_market['money']
+        self.team_stocks = f'\nBank: {player_stock_market["money"]}'
+        for team in player_stock_market:
             if team == 'money':
                 continue
-            team_worth = self.stock_market.stock_market_values[team][-1] * self.user_stock_market_credits[team]
+            team_worth = self.stock_market.stock_market_values[team][-1] * player_stock_market[team]
             if team_worth > 0:
-                total_worth += team_worth
-                team_stocks += f'\n\t{team}:\t{self.user_stock_market_credits[team]} * ' \
-                               f'{self.stock_market.stock_market_values[team][-1]}'
-        self.status_message = f'{self.social_credit_bot.user}\'s total worth is: {total_worth}{team_stocks}'
+                self.total_worth += team_worth
+                self.team_stocks += f'\n\t{team}:\t{player_stock_market[team]} * ' \
+                                    f'{self.stock_market.stock_market_values[team][-1]}'
 
     def help_message(self):
         """
@@ -283,6 +298,28 @@ class StockMarketBotCommands:
                               '' \
                               '\n\n!stocks status' \
                               '\n\t-\tShow your account value including all of your stocks```'
+
+    def leader_board(self):
+        """
+        Display a leader board of the current users playing in the stock market
+        """
+        titles = ['Player', 'Worth']
+        rows = self.get_every_players_worth()
+        file_name = 'stock_market_leaderboard.png'
+        CreateImage(titles, rows, file_name)
+
+    def get_every_players_worth(self) -> list:
+        """
+        Return a dual array of each player's worth
+
+        :return: Dual array [[name, worth], [name, worth]...]
+        """
+        all_rows = []
+        for user in self.social_credit_bot.credits:
+            if 'stock_market' in self.social_credit_bot.credits[user]:
+                self.get_player_worth(self.social_credit_bot.credits[user]['stock_market'])
+                all_rows.append([self.social_credit_bot.credits[user]['display name'], self.total_worth])
+        return all_rows
 
 
 if __name__ == '__main__':

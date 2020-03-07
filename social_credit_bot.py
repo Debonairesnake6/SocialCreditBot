@@ -13,6 +13,7 @@ from discord.errors import HTTPException
 from discord.ext import commands
 from dotenv import load_dotenv
 from PIL import Image, ImageDraw, ImageFont
+from text_to_image import CreateImage
 
 # Load environment variables
 load_dotenv()
@@ -30,10 +31,6 @@ class DiscordBot:
         self.user = None
         self.display_name = None
         self.message = None
-        self.table = None
-        self.img = None
-        self.font = None
-        self.draw = None
         self.stock_market_bot_commands = None
         self.post_credits = False
         self.bot = commands.Bot(command_prefix='!')
@@ -218,66 +215,25 @@ class DiscordBot:
         # Get the user's scores in order
         score_order = sorted([self.credits[user]['credits'] for user in self.credits], reverse=True)
 
-        # Get the user's names in order
-        name_order = []
+        # Create a array for each row
+        rows = []
         for amount in score_order:
             for name in self.credits:
-                if amount == self.credits[name]['credits'] and self.credits[name]['display name'] not in name_order:
-                    name_order.append(self.credits[name]['display name'])
+                if amount == self.credits[name]['credits'] \
+                        and self.credits[name]['display name'] not in [user[0] for user in rows]:
+                    rows.append([self.credits[name]['display name'], amount])
                     break
 
         # Set the value to a message if it is too big/small
-        for score in score_order:
-            if score > 1000000000000000:
-                score_order[score_order.index(score)] = 'Literally a social credit'
-            elif score < -1000000000000000:
-                score_order[score_order.index(score)] = 'Not worth your time reading their name'
+        for user_cnt, user in enumerate(rows):
+            if user[1] > 1000000000000000:
+                rows[user_cnt][1] = 'Literally a social credit'
+            elif user[1] < -1000000000000000:
+                rows[user_cnt][1] = 'Is mot worth your time reading their name'
 
-        # Insert the column titles into each array
-        name_order.insert(0, 'Citizen')
-        score_order.insert(0, 'Social Credits')
-
-        # Create the pretty table
-        self.create_table([name_order, score_order])
-
-        # Create the image
-        self.create_image()
-        self.img.save('credit_leader_board.png')
-
-        # Post to discord
+        # Create the image and send it to discord
+        CreateImage(['Citizen', 'Social Credits'], rows, 'credit_leader_board.png')
         await self.message.channel.send(file=File('credit_leader_board.png', filename='credit_leader_board.png'))
-
-    def create_table(self, columns):
-        """
-        Create a pretty table object from and array
-        """
-
-        # Setup the table
-        self.table = prettytable.PrettyTable()
-
-        # Add each column
-        for column in columns:
-            self.table.add_column(column[0], column[1:])
-
-        # Save the table as a string
-        self.table = self.table.get_string()
-
-    def create_image(self):
-        """
-        Create an image out of the given table
-        """
-
-        # Create the correct size image for the table
-        rows = self.table.count('\n')
-        columns = len(self.table.split('\n')[0])
-        self.img = Image.new('RGB', ((columns * 12), rows * 21 + 21), color=(54, 57, 63))
-
-        # Initialize font and drawing object
-        self.font = ImageFont.truetype('cour.ttf', 20)
-        self.draw = ImageDraw.Draw(self.img)
-
-        # Draw the table without markings
-        self.draw.text((0, 0), self.table, font=self.font, fill=(255, 255, 255))
 
     def get_all_member_credit_information(self):
         """
@@ -362,10 +318,11 @@ class DiscordBot:
         self.stock_market_bot_commands.setup()
         self.stock_market_bot_commands.parse_discord_message()
 
-        if os.path.isfile('stock_market_line_graph.png'):
-            await self.message.channel.send(file=File('stock_market_line_graph.png',
-                                                      filename='stock_market_line_graph.png'))
-            os.remove('stock_market_line_graph.png')
+        images = ['stock_market_line_graph.png', 'stock_market_leaderboard.png']
+        for image_file in images:
+            if os.path.isfile(image_file):
+                await self.message.channel.send(file=File(image_file, filename=image_file))
+                os.remove(image_file)
 
         not_found = ''
         for team in self.stock_market_bot_commands.stock_market.not_found_teams:
