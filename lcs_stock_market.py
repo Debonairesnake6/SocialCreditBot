@@ -216,7 +216,9 @@ class StockMarketBotCommands:
         if stock_requested_value < self.user_stock_market_credits['money']:
             self.user_stock_market_credits['money'] -= stock_requested_value
             self.user_stock_market_credits[self.team] += self.amount
-            self.status_message = f'Successfully purchased {self.amount} stocks of {self.team}.'
+            self.status_message = f'Successfully purchased {self.amount} stocks of {self.team} for ' \
+                                  f'{stock_requested_value}.\nYou have {self.user_stock_market_credits["money"]} ' \
+                                  f'remaining.'
         else:
             max_can_buy = int(self.user_stock_market_credits["money"] /
                               self.stock_market.stock_market_values[self.team][-1])
@@ -233,10 +235,11 @@ class StockMarketBotCommands:
         Have the user sell stocks
         """
         if self.user_stock_market_credits[self.team] >= self.amount:
-            self.user_stock_market_credits['money'] += self.stock_market.stock_market_values[self.team][-1] * \
-                                                       self.amount
+            sell_value = self.stock_market.stock_market_values[self.team][-1] * self.amount
+            self.user_stock_market_credits['money'] += sell_value
             self.user_stock_market_credits[self.team] -= self.amount
-            self.status_message = f'Successfully sold {self.amount} stocks of {self.team}.'
+            self.status_message = f'Successfully sold {self.amount} stocks of {self.team} for {sell_value}.\n' \
+                                  f'You now have {self.user_stock_market_credits["money"]} remaining.'
         else:
             self.status_message = f'You do not have {self.amount} stocks to sell. You only have ' \
                                   f'{self.user_stock_market_credits[self.team]}.'
@@ -318,7 +321,7 @@ class StockMarketBotCommands:
         for user in self.social_credit_bot.credits:
             if 'stock_market' in self.social_credit_bot.credits[user]:
                 self.get_player_worth(self.social_credit_bot.credits[user]['stock_market'])
-                all_rows.append([self.social_credit_bot.credits[user]['display name'], self.total_worth])
+                all_rows.append([self.social_credit_bot.credits[user]['display name'].strip(), self.total_worth])
         return all_rows
 
 
