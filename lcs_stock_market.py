@@ -5,6 +5,7 @@ Interact with the stock market spreadsheet to play along with the LCS stock mark
 import os
 import requests
 import json
+import time
 import matplotlib.pyplot as plt
 
 from dotenv import load_dotenv
@@ -213,37 +214,61 @@ class StockMarketBotCommands:
         """
         Have the user purchase stocks
         """
-        stock_requested_value = self.stock_market.stock_market_values[self.team][-1] * self.amount
-        if stock_requested_value < self.user_stock_market_credits['money']:
-            self.user_stock_market_credits['money'] -= stock_requested_value
-            self.user_stock_market_credits[self.team] += self.amount
-            self.status_message = f'Successfully purchased {self.amount} stocks of {self.team} for ' \
-                                  f'{stock_requested_value}.\nYou have {self.user_stock_market_credits["money"]} ' \
-                                  f'remaining.'
-        else:
-            max_can_buy = int(self.user_stock_market_credits["money"] /
-                              self.stock_market.stock_market_values[self.team][-1])
-            left = self.user_stock_market_credits["money"] % self.stock_market.stock_market_values[self.team][-1]
-            cost = self.user_stock_market_credits["money"] - left
-            self.status_message = f'Not enough money to buy the requested stocks. \n' \
-                                  f'{self.amount} {self.team} stocks are worth {stock_requested_value} but you only ' \
-                                  f'have {self.user_stock_market_credits["money"]}.\n' \
-                                  f'You can buy a maximum of {max_can_buy} {self.team} stock(s) for {cost} which ' \
-                                  f'would leave you with {left}.'
+        if self.verify_games_have_not_started():
+            stock_requested_value = self.stock_market.stock_market_values[self.team][-1] * self.amount
+            if stock_requested_value < self.user_stock_market_credits['money']:
+                self.user_stock_market_credits['money'] -= stock_requested_value
+                self.user_stock_market_credits[self.team] += self.amount
+                self.status_message = f'Successfully purchased {self.amount} stocks of {self.team} for ' \
+                                      f'{stock_requested_value}.\nYou have {self.user_stock_market_credits["money"]} ' \
+                                      f'remaining.'
+            else:
+                max_can_buy = int(self.user_stock_market_credits["money"] /
+                                  self.stock_market.stock_market_values[self.team][-1])
+                left = self.user_stock_market_credits["money"] % self.stock_market.stock_market_values[self.team][-1]
+                cost = self.user_stock_market_credits["money"] - left
+                self.status_message = f'Not enough money to buy the requested stocks. \n' \
+                                      f'{self.amount} {self.team} stocks are worth {stock_requested_value} but you only ' \
+                                      f'have {self.user_stock_market_credits["money"]}.\n' \
+                                      f'You can buy a maximum of {max_can_buy} {self.team} stock(s) for {cost} which ' \
+                                      f'would leave you with {left}.'
 
     def sell_stocks(self):
         """
         Have the user sell stocks
         """
-        if self.user_stock_market_credits[self.team] >= self.amount:
-            sell_value = self.stock_market.stock_market_values[self.team][-1] * self.amount
-            self.user_stock_market_credits['money'] += sell_value
-            self.user_stock_market_credits[self.team] -= self.amount
-            self.status_message = f'Successfully sold {self.amount} stocks of {self.team} for {sell_value}.\n' \
-                                  f'You now have {self.user_stock_market_credits["money"]} remaining.'
+        if self.verify_games_have_not_started():
+            if self.user_stock_market_credits[self.team] >= self.amount:
+                sell_value = self.stock_market.stock_market_values[self.team][-1] * self.amount
+                self.user_stock_market_credits['money'] += sell_value
+                self.user_stock_market_credits[self.team] -= self.amount
+                self.status_message = f'Successfully sold {self.amount} stocks of {self.team} for {sell_value}.\n' \
+                                      f'You now have {self.user_stock_market_credits["money"]} remaining.'
+            else:
+                self.status_message = f'You do not have {self.amount} stocks to sell. You only have ' \
+                                      f'{self.user_stock_market_credits[self.team]}.'
+
+    def verify_games_have_not_started(self) -> bool:
+        """
+        Verify the games have not started for the weekend.
+
+        :return: Indicating if the games have started
+        """
+        day, hour = time.gmtime().tm_wday, time.gmtime().tm_hour
+        games_started_message = 'You cannot manipulate your stocks after the games have already started.\n' \
+                                'They update the sheet late Tuesday so the stock market will open on Tuesday at 8 pm.'
+
+        # Disable on Sunday, Monday, and Tuesday
+        if day == 6 or day == 0:
+            self.status_message = games_started_message
+            return False
+
+        # Disable on Saturday after the games start at 5pm Eastern
+        elif day == 5 and hour >= 21:
+            self.status_message = games_started_message
+            return False
         else:
-            self.status_message = f'You do not have {self.amount} stocks to sell. You only have ' \
-                                  f'{self.user_stock_market_credits[self.team]}.'
+            return True
 
     def player_status(self):
         """
