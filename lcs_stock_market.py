@@ -5,7 +5,6 @@ Interact with the stock market spreadsheet to play along with the LCS stock mark
 import os
 import requests
 import json
-import sys
 import matplotlib.pyplot as plt
 
 from dotenv import load_dotenv
@@ -120,7 +119,8 @@ class StockMarketBotCommands:
     """
     # Todo
     #   -   Create table showing gains/losses in green/red
-    #   -   Better status message
+    #   -   Weekly schedule
+    #   -   Manually calculate elo
     def __init__(self, social_credit_bot: object):
         self.social_credit_bot = social_credit_bot
         self.message = social_credit_bot.message
@@ -260,7 +260,7 @@ class StockMarketBotCommands:
         :param player_stock_market: Stock market dictionary for a player
         """
         self.total_worth = player_stock_market['money']
-        self.team_stocks = [['Bank', '---', '-', player_stock_market['money']]]
+        self.team_stocks = []
         for team in player_stock_market:
             if team == 'money':
                 continue
@@ -269,6 +269,7 @@ class StockMarketBotCommands:
                 self.total_worth += team_worth
                 self.team_stocks.append([team, self.stock_market.stock_market_values[team][-1],
                                          player_stock_market[team], team_worth])
+        self.team_stocks.append(['Bank', '---', '-', player_stock_market['money']])
         self.team_stocks.append(['Total:', '---', '-', self.total_worth])
 
     def help_message(self):
