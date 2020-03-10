@@ -259,7 +259,7 @@ class StockMarketBotCommands:
                                 'They update the sheet late Tuesday so the stock market will open on Tuesday at 8 pm.'
 
         # Disable on Sunday, Monday, and Tuesday
-        if day == 6 or day == 0:
+        if day == 6 or day == 0 or day == 1:
             self.status_message = games_started_message
             return False
 
