@@ -337,6 +337,16 @@ class DiscordBot:
         if not_found != '':
             await self.message.channel.send(f'Could not find the teams: {not_found[:-2]}')
 
+    async def handle_happy_birthday_message(self):
+        """
+        Handle the incoming happy birthday message
+        """
+
+        birthday_message = 'Happy Birthday'
+        for letter in birthday_message:
+            await self.message.channel.send(f'{letter} {self.message.content.split()[1]}')
+            time.sleep(1)
+
     @staticmethod
     async def message_user(user, message):
         """
@@ -357,7 +367,8 @@ class DiscordBot:
             'stock': self.handle_stock_market_message,
             'stocks': self.handle_stock_market_message,
             'stonk': self.handle_stock_market_message,
-            'stonks': self.handle_stock_market_message
+            'stonks': self.handle_stock_market_message,
+            'birthday': self.handle_happy_birthday_message
         }
 
         @self.bot.event
