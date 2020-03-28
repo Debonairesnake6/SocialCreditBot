@@ -27,6 +27,9 @@ class StockMarket:
         self.api_base_url = 'https://sheets.googleapis.com'
         self.sheet_values_query = '/v4/spreadsheets/1y3rMtxTl8h-KtJJdI1x2Yy3TY02lGvdB4bBGteIh5Ao/values/Prices'
         self.not_found_teams = []
+        self.sheet_info = None
+        self.rows = []
+        self.row_colours = []
 
     def get_stock_market_information(self):
         """
@@ -39,23 +42,44 @@ class StockMarket:
         """
         Query the sheet to grab the information
         """
-        sheet_info = requests.get(f'{self.api_base_url}{self.sheet_values_query}{self.api_key}').text
-        self.stock_market_values = json.loads(sheet_info)['values'][1:]
+        self.sheet_info = requests.get(f'{self.api_base_url}{self.sheet_values_query}{self.api_key}').text
+        self.stock_market_values = json.loads(self.sheet_info)['values'][1:]
 
     def format_stock_market_values(self):
         """
         Format the values from the sheet into a proper dictionary
         """
         stock_market_values_copy = self.stock_market_values[:]
-        self.stock_market_values = {}
-        for team_value_per_day in stock_market_values_copy:
-            team = team_value_per_day[0]
-            current = team_value_per_day[2]
+        self.add_initial_values()
+        self.add_stock_values_after_games(stock_market_values_copy)
 
-            if team not in self.stock_market_values:
-                self.stock_market_values[team] = [int(current)]
-            elif int(current) != self.stock_market_values[team][-1]:
-                self.stock_market_values[team].append(int(current))
+    def add_stock_values_after_games(self, stock_market_values_copy: list):
+        """
+        Add the stock values after the games have been completed
+
+        :param stock_market_values_copy: Original copy of the values from the stock market spreadsheet
+        """
+        for team_cnt in range(10):
+            for cnt, team_value_per_day in enumerate(stock_market_values_copy[10 + team_cnt::30]):
+                team = team_value_per_day[0]
+                day_1 = team_value_per_day
+                day_2 = stock_market_values_copy[(10 + team_cnt) + (cnt * 30) + 10]
+                day_3 = stock_market_values_copy[(10 + team_cnt) + (cnt * 30) + 20]
+
+                # After game 1 of the week
+                if int(day_1[2]) != self.stock_market_values[team][-1]:
+                    self.stock_market_values[team].append(int(day_1[2]))
+                else:
+                    self.stock_market_values[team].append(int(day_2[2]))
+
+                # After game 2 of the week
+                self.stock_market_values[team].append(int(day_3[2]))
+
+    def add_initial_values(self):
+        """
+        Add the initial value of each team to the dictionary
+        """
+        self.stock_market_values = [{team[0]: [int(team[2])] for team in self.stock_market_values[:10]}][0]
 
     def create_stock_value_graph_for_league(self):
         """
@@ -108,10 +132,65 @@ class StockMarket:
         plt.xlabel('Game')
         plt.ylabel('Value')
         plt.legend(loc='upper left', ncol=2)
-        plt.savefig('stock_market_line_graph.png')
+        plt.savefig('../extra_files/stock_market_line_graph.png')
         plt.clf()
         if debug:
             plt.show()
+
+    def display_stock_market_table(self, teams: list = False):
+        """
+        Create a table to show the values of each team in the stock market
+
+        :param teams: List of specific teams to make the table out of
+        """
+        titles = ['Team', 'Value', 'Last Week', 'Min', 'Max', 'Avg']
+        file_name = '../extra_files/stock_market_table.png'
+
+        self.get_all_team_rows(teams)
+        CreateImage(titles, self.rows, file_name, colour=self.row_colours)
+
+    def get_all_team_rows(self, teams: list = False):
+        """
+        Get all of the team rows in order to create the stock market table
+
+        :param teams: List of specific teams to make the table out of
+        """
+        current_values = [[team, self.stock_market_values[team][-1]] for team in self.stock_market_values]
+        for _ in range(len(current_values)):
+            highest = max([team[1] for team in current_values])
+            for team in current_values:
+                if team[1] == highest:
+                    if teams:
+                        if team[0] in teams:
+                            self.get_team_row(team[0])
+                    else:
+                        self.get_team_row(team[0])
+                    current_values.remove(team)
+                    break
+
+    def get_team_row(self, team: str):
+        """
+        Get an individual team's row for the stock market table
+
+        :param team: Name of the team
+        """
+        value = str(self.stock_market_values[team][-1])
+        if len(self.stock_market_values[team]) > 2:
+            last_week = str(int(value) - self.stock_market_values[team][-3])
+        else:
+            last_week = 'N/A'
+        minimum = str(min(self.stock_market_values[team]))
+        maximum = str(max(self.stock_market_values[team]))
+        average = f'{sum(self.stock_market_values[team]) / len(self.stock_market_values[team]):.1f}'
+
+        self.rows.append([team, value, last_week, minimum, maximum, average])
+
+        if last_week == 'N/A' or int(last_week) == 0:
+            self.row_colours.append(['', '', '', '', '', ''])
+        elif int(last_week) > 0:
+            self.row_colours.append(['', '', 'green', '', '', ''])
+        else:
+            self.row_colours.append(['', '', 'red', '', '', ''])
 
 
 class StockMarketBotCommands:
@@ -121,7 +200,6 @@ class StockMarketBotCommands:
     # Todo
     #   -   Create table showing gains/losses in green/red
     #   -   Weekly schedule
-    #   -   Manually calculate elo
     def __init__(self, social_credit_bot: object):
         self.social_credit_bot = social_credit_bot
         self.message = social_credit_bot.message
@@ -169,7 +247,8 @@ class StockMarketBotCommands:
             if self.command_options.get(self.command, False):
                 self.command_options[self.command]()
             else:
-                self.status_message = f'Unknown command: {self.command}'
+                self.status_message = f'Unknown command: {self.command}. Use the following command for help.\n' \
+                                      f'!stocks help'
         else:
             self.command = self.message.content
             self.process_league_graph()
@@ -178,9 +257,12 @@ class StockMarketBotCommands:
         """
         Create graphs for every team in the message
         """
-        for team in self.message.content.split()[1:]:
+        teams = []
+        for team in self.message.content.split()[2:]:
             self.stock_market.create_team_stock_value_graph(team.replace(',', '').strip().upper())
+            teams.append(team.replace(',', '').strip().upper())
         self.stock_market.display_stock_market_graph()
+        self.stock_market.display_stock_market_table(teams)
 
     def process_league_graph(self):
         """
@@ -188,6 +270,7 @@ class StockMarketBotCommands:
         """
         self.stock_market.create_stock_value_graph_for_league()
         self.stock_market.display_stock_market_graph()
+        self.stock_market.display_stock_market_table()
 
     def buy_or_sell_stock(self):
         """
@@ -276,7 +359,8 @@ class StockMarketBotCommands:
         """
         self.get_player_worth(self.user_stock_market_credits)
         self.image_description = f'{self.social_credit_bot.display_name}\'s total worth table:'
-        CreateImage(['Team', 'Price', 'Amount', 'Total Value'], self.team_stocks, 'stock_market_player_status.png')
+        CreateImage(['Team', 'Price', 'Amount', 'Total Value'], self.team_stocks,
+                    '../extra_files/stock_market_player_status.png')
 
     def get_player_worth(self, player_stock_market: dict):
         """
@@ -301,7 +385,7 @@ class StockMarketBotCommands:
         """
         Display the help message for how to use the bot
         """
-        self.status_message = '```Stocks commands:' \
+        self.status_message = 'Stocks commands:```' \
                               'Whenever I have multiple commands like stocks/stock that means any of the listed ones ' \
                               'work. All commands start with !' \
                               '' \
@@ -337,7 +421,7 @@ class StockMarketBotCommands:
         """
         titles = ['Player', 'Worth']
         rows = self.get_every_players_worth()
-        file_name = 'stock_market_leaderboard.png'
+        file_name = '../extra_files/stock_market_leaderboard.png'
         CreateImage(titles, rows, file_name)
 
     def get_every_players_worth(self) -> list:
@@ -357,8 +441,5 @@ class StockMarketBotCommands:
 if __name__ == '__main__':
     stock_market = StockMarket()
     stock_market.get_stock_market_information()
-    stock_market.create_team_stock_value_graph('C9')
-    stock_market.create_team_stock_value_graph('CLG')
-    # stock_market.create_stock_value_graph_for_league()
-    stock_market.display_stock_market_graph(debug=True)
+    stock_market.display_stock_market_table()
     print()

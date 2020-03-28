@@ -1,10 +1,12 @@
+"""
+This is the brain of the bot which parses input and manages the discord server
+"""
+
 import os
 import json
-import requests
 import urllib
 import time
 import sys
-import prettytable
 import lcs_stock_market
 
 from discord import File
@@ -12,7 +14,6 @@ from discord import User
 from discord.errors import HTTPException
 from discord.ext import commands
 from dotenv import load_dotenv
-from PIL import Image, ImageDraw, ImageFont
 from text_to_image import CreateImage
 
 # Load environment variables
@@ -47,19 +48,19 @@ class DiscordBot:
         """
 
         # If the credit_data.json file does not exist, create it
-        if not os.path.isfile('credit_data.json'):
-            with open('credit_data.json', 'w', encoding='utf-8') as credit_data_file:
+        if not os.path.isfile('../extra_files/credit_data.json'):
+            with open('../extra_files/credit_data.json', 'w', encoding='utf-8') as credit_data_file:
                 credit_data_file.write('{\n}')
 
         # If the file does exist, read it and save it's values
         else:
             try:
-                with open('credit_data.json', 'r', encoding='utf-8') as credit_data_file:
+                with open('../extra_files/credit_data.json', 'r', encoding='utf-8') as credit_data_file:
                     self.credits = json.load(credit_data_file)
 
             # If the file is empty, create it an as empty dictionary
             except json.decoder.JSONDecodeError:
-                with open('credit_data.json', 'w', encoding='utf-8') as credit_data_file:
+                with open('../extra_files/credit_data.json', 'w', encoding='utf-8') as credit_data_file:
                     credit_data_file.write('{\n}')
 
     def save_credits(self):
@@ -68,10 +69,8 @@ class DiscordBot:
         """
 
         # Save the credits to the credit_data.json file
-        with open('credit_data.json', 'w', encoding='utf-8') as credit_data_file:
-            credit_data_file.write(str(self.credits).replace('{\'', '{\n\t\'').replace(': {\n\t', ': {\n\t\t')
-                                   .replace('}, ', '},\n\t').replace(', ', ',\n\t\t').replace('}}', '}\n}')
-                                   .replace('"', '\\"').replace('\'', '"'))
+        with open('../extra_files/credit_data.json', 'w', encoding='utf-8') as credit_data_file:
+            json.dump(self.credits, credit_data_file, indent=4)
 
     async def add_credits(self, amount):
         """
@@ -232,8 +231,10 @@ class DiscordBot:
                 rows[user_cnt][1] = 'Is mot worth your time reading their name'
 
         # Create the image and send it to discord
-        CreateImage(['Citizen', 'Social Credits'], rows, 'credit_leader_board.png')
-        await self.message.channel.send(file=File('credit_leader_board.png', filename='credit_leader_board.png'))
+        CreateImage(['Citizen', 'Social Credits'], rows, '../extra_files/credit_leader_board.png')
+        await self.message.channel.send(file=File('../extra_files/credit_leader_board.png',
+                                                  filename='credit_leader_board.png'))
+        os.remove('../extra_files/credit_leader_board.png')
 
     def get_all_member_credit_information(self):
         """
@@ -257,11 +258,59 @@ class DiscordBot:
         # Save the dictionary
         self.save_credits()
 
+    async def help_message(self):
+        """
+        Display the help message for the bot
+        """
+        await self.message.channel.send('Social Credit commands:```'
+                                        'Whenever I have multiple commands like ussr/USSR that means any of the listed '
+                                        'ones work. Anything in square brackets [] is optional, curly braces {} are '
+                                        'required but have an obvious substitute for the word. All commands start '
+                                        'with !'
+                                        ''
+                                        '\n\n!ussr/USSR'
+                                        '\n\t-\tBasic commands to use the bot. This will display your current balance.'
+                                        '\n\t-\tAll of the following commands work with all of these options, but I '
+                                        'will just show using USSR as it is redundant to list all of them.'
+                                        ''
+                                        '\n\n!USSR add {amount} [@Citizen]'
+                                        '\n\t-\tAdd social credits to your account. Replace {amount} with the value you'
+                                        ' want to add.'
+                                        '\n\t-\tIf you ping a user or group at the end of the message it will '
+                                        'add credits to their account instead.'
+                                        '\n\t-\te.g. !USSR add 12345'
+                                        '\n\t-\te.g. !USSR add 54321 @Debonairesnake6'
+                                        '\n\t-\te.g. !USSR add 123 @TheSquad'
+                                        ''
+                                        '\n\n!USSR remove {amount} [@Citizen]'
+                                        '\n\t-\tRemove social credits from your account. Replace {amount} with the '
+                                        'value you want to remove.'
+                                        '\n\t-\tIf you ping a user or group at the end of the '
+                                        'message it will remove credits from their account instead.'
+                                        '\n\t-\te.g. !USSR remove 12345'
+                                        '\n\t-\te.g. !USSR remove 54321 @Debonairesnake6'
+                                        '\n\t-\te.g. !USSR remove 123 @TheSquad'
+                                        ''
+                                        '\n\n!USSR set {amount} [@Citizen]'
+                                        '\n\t-\tSet the amount of social credits in your account. Replace {amount} '
+                                        'with the value you want to set it to.'
+                                        '\n\t-\tIf you ping a user or group at the end '
+                                        'of the message it will set their credits to that amount instead.'
+                                        '\n\t-\te.g. !USSR set 12345'
+                                        '\n\t-\te.g. !USSR set 54321 @Debonairesnake6'
+                                        '\n\t-\te.g. !USSR set 123 @TheSquad'
+                                        ''
+                                        '\n\n!USSR leaderboard'
+                                        '\n\t-\tDisplay the leaderboard for each citizen\'s bank account.'
+                                        '\n\t-\te.g. !USSR leaderboard'
+                                        ''
+                                        '\n\n!USSR help'
+                                        '\n\t-\tShow this help message.```')
+
     async def handle_ussr_message(self):
         """
         Process the incoming USSR discord message
         """
-
         # Check if any arguments were given
         valid = ['!USSR', '!ussr']
         if self.message.content not in valid:
@@ -294,11 +343,20 @@ class DiscordBot:
                                                     f'is not a valid number to add.')
 
             # Display the credit leader board
-            elif command == 'legend':
+            elif command == 'leaderboard':
                 try:
                     await self.leader_board()
                 except ValueError:
                     await self.message.channel.send(f'Leader board too big to display')
+
+            # Display the help message
+            elif command == 'help':
+                await self.help_message()
+
+            # Display unknown command
+            else:
+                await self.message.channel.send(f'Unknown command: {command}. Use the following command for help.\n'
+                                                f'!ussr help')
 
             # Toggle if the user's credits should be posted
             if self.post_credits is True:
@@ -323,8 +381,10 @@ class DiscordBot:
             await self.message.channel.send(self.stock_market_bot_commands.status_message)
 
         # Post and remove any created images
-        images = ['stock_market_line_graph.png', 'stock_market_leaderboard.png', 'stock_market_player_status.png']
+        images = ['stock_market_line_graph.png', 'stock_market_leaderboard.png', 'stock_market_player_status.png',
+                  'stock_market_table.png']
         for image_file in images:
+            image_file = f'../extra_files/{image_file}'
             if os.path.isfile(image_file):
                 await self.message.channel.send(self.stock_market_bot_commands.image_description,
                                                 file=File(image_file, filename=image_file))
