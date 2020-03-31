@@ -10,7 +10,8 @@ import sys
 import lcs_stock_market
 
 from discord import File
-from discord import User
+from discord import Activity
+from discord import ActivityType
 from discord.errors import HTTPException
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -211,30 +212,33 @@ class DiscordBot:
         Post the leader board to discord
         """
 
-        # Get the user's scores in order
-        score_order = sorted([self.credits[user]['credits'] for user in self.credits], reverse=True)
+        try:
+            # Get the user's scores in order
+            score_order = sorted([self.credits[user]['credits'] for user in self.credits], reverse=True)
 
-        # Create a array for each row
-        rows = []
-        for amount in score_order:
-            for name in self.credits:
-                if amount == self.credits[name]['credits'] \
-                        and self.credits[name]['display name'] not in [user[0] for user in rows]:
-                    rows.append([self.credits[name]['display name'], amount])
-                    break
+            # Create a array for each row
+            rows = []
+            for amount in score_order:
+                for name in self.credits:
+                    if amount == self.credits[name]['credits'] \
+                            and self.credits[name]['display name'] not in [user[0] for user in rows]:
+                        rows.append([self.credits[name]['display name'], amount])
+                        break
 
-        # Set the value to a message if it is too big/small
-        for user_cnt, user in enumerate(rows):
-            if user[1] > 1000000000000000:
-                rows[user_cnt][1] = 'Literally a social credit'
-            elif user[1] < -1000000000000000:
-                rows[user_cnt][1] = 'Is mot worth your time reading their name'
+            # Set the value to a message if it is too big/small
+            for user_cnt, user in enumerate(rows):
+                if user[1] > 1000000000000000:
+                    rows[user_cnt][1] = 'Literally a social credit'
+                elif user[1] < -1000000000000000:
+                    rows[user_cnt][1] = 'Is mot worth your time reading their name'
 
-        # Create the image and send it to discord
-        CreateImage(['Citizen', 'Social Credits'], rows, '../extra_files/credit_leader_board.png')
-        await self.message.channel.send(file=File('../extra_files/credit_leader_board.png',
-                                                  filename='credit_leader_board.png'))
-        os.remove('../extra_files/credit_leader_board.png')
+            # Create the image and send it to discord
+            CreateImage(['Citizen', 'Social Credits'], rows, '../extra_files/credit_leader_board.png')
+            await self.message.channel.send(file=File('../extra_files/credit_leader_board.png',
+                                                      filename='credit_leader_board.png'))
+            os.remove('../extra_files/credit_leader_board.png')
+        except ValueError:
+            await self.message.channel.send(f'Leader board too big to display')
 
     def get_all_member_credit_information(self):
         """
@@ -307,6 +311,13 @@ class DiscordBot:
                                         '\n\n!USSR help'
                                         '\n\t-\tShow this help message.```')
 
+    async def unknown_command(self):
+        """
+        Tell the user the given command is unknown
+        """
+        await self.message.channel.send(f'Unknown command: {self.message.content.split()[1]}. Use the following command'
+                                        f' for help.\n!ussr help')
+
     async def handle_ussr_message(self):
         """
         Process the incoming USSR discord message
@@ -317,46 +328,17 @@ class DiscordBot:
 
             # Process the command based on the arguments
             command = self.message.content.split(' ')[1]
-
-            # Add credits for the user and post them to discord
-            if command == 'add':
-                try:
-                    await self.add_credits(int(self.message.content.split(' ')[2]))
-                except (ValueError, TypeError):
-                    await self.message.channel.send(f'{self.message.content.split(" ")[2]} '
-                                                    f'is not a valid number to add.')
-
-            # Remove credits from the user and post them to discord
-            elif command == 'remove':
-                try:
-                    await self.remove_credits(int(self.message.content.split(' ')[2]))
-                except (ValueError, TypeError):
-                    await self.message.channel.send(f'{self.message.content.split(" ")[2]} '
-                                                    f'is not a valid number to add.')
-
-            # Set the credits for the user and post them to discord
-            elif command == 'set':
-                try:
-                    await self.set_credits(int(self.message.content.split(' ')[2]))
-                except ValueError:
-                    await self.message.channel.send(f'{self.message.content.split(" ")[2]} '
-                                                    f'is not a valid number to add.')
-
-            # Display the credit leader board
-            elif command == 'leaderboard':
-                try:
-                    await self.leader_board()
-                except ValueError:
-                    await self.message.channel.send(f'Leader board too big to display')
-
-            # Display the help message
-            elif command == 'help':
-                await self.help_message()
-
-            # Display unknown command
+            command_list = {
+                'add': self.add_credits,
+                'remove': self.remove_credits,
+                'set': self.set_credits,
+                'leaderboard': self.leader_board,
+                'help': self.help_message
+            }
+            if len(self.message.content.split(' ')) == 2:
+                await command_list.get(command, self.unknown_command)()
             else:
-                await self.message.channel.send(f'Unknown command: {command}. Use the following command for help.\n'
-                                                f'!ussr help')
+                await command_list.get(command, self.unknown_command)(self.message.content.split(' ')[2])
 
             # Toggle if the user's credits should be posted
             if self.post_credits is True:
@@ -364,8 +346,6 @@ class DiscordBot:
 
         # If no arguments were given
         else:
-
-            # Post the user's credits to discord
             await self.post_user_credits()
 
     async def handle_stock_market_message(self):
@@ -447,9 +427,18 @@ class DiscordBot:
                 self.get_all_member_credit_information()
                 await valid_commands[message.content.split()[0][1:]]()
 
+        @self.bot.event
+        async def on_ready():
+            """
+            Set the bot status on discord
+            """
+            if os.name == 'nt':
+                print('Ready')
+
+            await self.bot.change_presence(activity=Activity(type=ActivityType.playing, name='!ussr help | '
+                                                                                             '!stocks help'))
+
         # Run the bot
-        if os.name == 'nt':
-            print('Ready')
         self.bot.run(os.getenv('DISCORD_TOKEN'))
 
 

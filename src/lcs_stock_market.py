@@ -63,8 +63,17 @@ class StockMarket:
             for cnt, team_value_per_day in enumerate(stock_market_values_copy[10 + team_cnt::30]):
                 team = team_value_per_day[0]
                 day_1 = team_value_per_day
-                day_2 = stock_market_values_copy[(10 + team_cnt) + (cnt * 30) + 10]
-                day_3 = stock_market_values_copy[(10 + team_cnt) + (cnt * 30) + 20]
+                try:
+                    day_2 = stock_market_values_copy[(10 + team_cnt) + (cnt * 30) + 10]
+                except IndexError:
+                    self.stock_market_values[team].append(int(day_1[2]))
+                    break
+                try:
+                    day_3 = stock_market_values_copy[(10 + team_cnt) + (cnt * 30) + 20]
+                except IndexError:
+                    self.stock_market_values[team].append(int(day_1[2]))
+                    self.stock_market_values[team].append(int(day_2[2]))
+                    break
 
                 # After game 1 of the week
                 if int(day_1[2]) != self.stock_market_values[team][-1]:
