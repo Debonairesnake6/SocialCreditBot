@@ -211,17 +211,18 @@ class TableToImage:
 
             # If the word appears multiple times
             else:
-                x_position = [x_pos for x_pos in range(len(row_string)) if
-                              row_string.startswith(self.word, x_pos)][self.processed.count(self.word)]
+                x_position = [x_pos for x_pos in range(len(row_string)) if row_string.startswith(self.word, x_pos)
+                              and row_string[x_pos + len(self.word)] in [' ', '|'] and row_string[x_pos - 1] in
+                              [' ', '|']][self.processed.count(self.word)]
 
             # Fill with black first
-            for x in range(5):
+            for _ in range(5):
                 self.draw.text(((x_position * 12) + 12, (self.row_cnt * 21) + 12),
                                self.word, font=self.font,
                                fill=self.colours['black'])
 
             # Fill with the desired colour
-            for x in range(5):
+            for _ in range(5):
                 self.draw.text(((x_position * 12) + 12, (self.row_cnt * 21) + 12),
                                self.word, font=self.font,
                                fill=self.colours[self.colour])

@@ -27,8 +27,9 @@ class DiscordBot:
     """
 
     def __init__(self):
-
-        # Placeholder variables
+        """
+        Social Credit Discord bot
+        """
         self.credits = {}
         self.user = None
         self.display_name = None
@@ -73,11 +74,13 @@ class DiscordBot:
         with open('../extra_files/credit_data.json', 'w', encoding='utf-8') as credit_data_file:
             json.dump(self.credits, credit_data_file, indent=4)
 
-    async def add_credits(self, amount):
+    async def add_credits(self, amount: str):
         """
         Add credits to the given user's account
+
         :param amount: Amount of credits to add
         """
+        amount = int(amount)
 
         # Add if the value is positive
         if amount >= 0:
@@ -113,11 +116,13 @@ class DiscordBot:
             self.post_credits = False
             await self.message.channel.send(f'Only user positive numbers, cheater.')
 
-    async def remove_credits(self, amount):
+    async def remove_credits(self, amount: str):
         """
         Remove credits from the given user's account
+
         :param amount: Amount of credits to remove
         """
+        amount = int(amount)
 
         # Add if the value is positive
         if amount >= 0:
@@ -153,11 +158,13 @@ class DiscordBot:
             self.post_credits = False
             await self.message.channel.send(f'Only user positive numbers, cheater.')
 
-    async def set_credits(self, amount):
+    async def set_credits(self, amount: int):
         """
         Set the user's credits
+
         :param amount: Amount of credits to set
         """
+        amount = int(amount)
 
         # Processes for the author of the message if no mentions were included
         if len(self.message.mentions) == 0 and len(self.message.role_mentions) == 0:
@@ -338,6 +345,7 @@ class DiscordBot:
             if len(self.message.content.split(' ')) == 2:
                 await command_list.get(command, self.unknown_command)()
             else:
+                # noinspection PyArgumentList
                 await command_list.get(command, self.unknown_command)(self.message.content.split(' ')[2])
 
             # Toggle if the user's credits should be posted
@@ -388,7 +396,7 @@ class DiscordBot:
             time.sleep(1)
 
     @staticmethod
-    async def message_user(user, message):
+    async def message_user(user: object, message: str):
         """
         Send a private message to the user. For the message variable you can use message.author.send()
 
@@ -412,7 +420,7 @@ class DiscordBot:
         }
 
         @self.bot.event
-        async def on_message(message):
+        async def on_message(message: object):
             """
             Receive any message
 
