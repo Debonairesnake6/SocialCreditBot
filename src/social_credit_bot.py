@@ -472,6 +472,7 @@ if __name__ == '__main__':
             #   -   Bank
             #   -   LCS betting
             #   -   Buy abilities to mute others
+            #   -   Add function for ASCII art
 
             DiscordBot()
             break
